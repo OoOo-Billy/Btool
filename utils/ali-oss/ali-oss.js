@@ -1,6 +1,6 @@
 /*
 * 阿里云OSS图片上传
-* 应用场景：函数ossUploadFile添加到element-ui组件el-upload的http-request属性中，替换其默认的上传函数
+* 应用场景：外部调用ossUploadFile函数，并传入option参数
 * */
 import OSS from 'utils/ali-oss/ali-oss'
 export default {
@@ -52,21 +52,21 @@ export default {
    */
   ossUploadFile(option) {
     const token = option.token
-    const code = option.code
-    let file = option.file
+    const fileName = option.fileName
+    const file = option.file
     const self = this
     return new Promise((resolve, reject) => {
-      let extensionName = file.name.substr(file.name.indexOf('.')) // 文件扩展名
-      let fileName = `${code}${extensionName}` // 文件名字（相对于根目录的路径 + 文件名）
+      const extensionName = file.name.substr(file.name.indexOf('.')) // 文件扩展名
+      const fileName = `${fileName}${extensionName}` // 文件名字（相对于根目录的路径 + 文件名）
       // 执行上传
-      self.createOssClient(token).then(client => {
+      self.createOssClient(token).then((client) => {
         // // 异步上传,返回数据
         // 分片上传文件
         client.multipartUpload(fileName, file, {
+          // 上传进度条(如果需要的话传入progress属性)
           progress: (p) => {
             let e = {}
             e.percent = Math.floor(p * 100)
-            // console.log('Progress: ' + p)
             option.onProgress(e)
           }
         }).then((val) => {
@@ -76,7 +76,7 @@ export default {
           } else {
             option.onError('上传失败')
           }
-        }, err => {
+        }, (err) => {
           option.onError('上传失败')
           reject(err)
         })
