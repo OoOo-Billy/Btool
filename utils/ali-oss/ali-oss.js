@@ -63,12 +63,20 @@ export default {
         // // 异步上传,返回数据
         // 分片上传文件
         client.multipartUpload(fileName, file, {
-          // 上传进度条(如果需要的话传入progress属性)
-          progress: (p) => {
+          // 上传进度条(如果需要的话传入progress属性,注意：外部需要在el-upload元素里给on-progress属性传值,否则并无效果)
+          progress: (p) => { // p为0-1小数
             let e = {}
             e.percent = Math.floor(p * 100)
-            option.onProgress(e)
+            option.onProgress({}, e)
+            // option.onProgress(event, file, fileList) // el-upload的onProgress传入3个参数,event, file和fileList
           }
+
+          // progress: (p) => {
+          //   let e = {}
+          //   e.percentage = Math.floor(p * 100)
+          //   console.log('Progress: ' + p) // 可以打印
+          //   option.onProgress(function(){}, e)
+          // }
         }).then((val) => {
           if (val.res.statusCode === 200) {
             option.onSuccess(val)
