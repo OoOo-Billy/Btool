@@ -1,5 +1,6 @@
 node_modules
 dist
+test
 
 # local env files
 .env.local
