@@ -1,91 +1,95 @@
 /*
-* 阿里云OSS图片上传
-* 应用场景：外部调用ossUploadFile函数，并传入option参数
-* */
-import OSS from 'utils/ali-oss/ali-oss'
-export default {
-  // 实例化OSS Client，具体的参数可参照文档配置项
-  // let client = new OSS({
-  //   region: '<oss region>',
-  //   // 云账号AccessKey有所有API访问权限，建议遵循阿里云安全最佳实践，创建并使用STS方式来进行API访问
-  //   accessKeyId: '<Your accessKeyId(STS)>',
-  //   accessKeySecret: '<Your accessKeySecret(STS)>',
-  //   stsToken: '<Your securityToken(STS)>',
-  //   bucket: '<Your bucket name>'
-  // })
-  //
-  // async put () {
-  //   try {
-  //     // object表示上传到OSS的名字，可自己定义
-  //     // file浏览器中需要上传的文件，支持HTML5 file 和 Blob类型
-  //     let r1 = await client.put('object', file);
-  //     console.log('put success: %j', r1);
-  //     let r2 = await client.get('object');
-  //     console.log('get success: %j', r2);
-  //   } catch (e) {
-  //     console.error('error: %j', e);
-  //   }
-  // }
-  // put()
-  //
-  //   return []
+ * 阿里云OSS上传文件（图片）
+ * 应用场景：外部调用ossUploadFile函数，并传入option参数
+ * 需要安装依赖 npm install ali-oss --save
+ * 使用案例可以参考csdn: https://blog.csdn.net/qq_27626333/article/details/81463139
+ *
+ * 需要传入的参数：option(*星号标注为必须)
+ * [token]* {Object}:阿里云官方返回的token对象,或token对象里的credentials属性
+ * [region] {String}:bucket 所在的区域，默认 oss-cn-hangzhou
+ * [bucket]* {String}:bucket 名字
+ * [fileName] {String}:文件命名
+ * [file]* {File}:上传的文件对象
+ * [onProgress] {Function}:使用分片上传时,上传进度的回调函数
+ * [onSuccess] {Function}:上传成功后的回调函数
+ * [onError] {Function}:上传失败的回调函数
+ */
+// version v0.0.2
 
-  /**
-   * 创建oss客户端对象
-   * @returns {*}
-   */
-  createOssClient(token) {
-    return new Promise((resolve, reject) => {
-      let client = new OSS({
-        region: 'oss-cn-shenzhen',
-        accessKeyId: token.credentials.accessKeyId,
-        accessKeySecret: token.credentials.accessKeySecret,
-        bucket: 'bingo-public',
-        stsToken: token.credentials.securityToken
-      })
-      resolve(client)
+import OSS from 'ali-oss'
+
+/**
+ * 实例化OSS Client, 具体的参数可参照文档配置项:https://help.aliyun.com/document_detail/64095.html
+ * @param {Object} token
+ * @returns {*} client
+ */
+function createOssClient(token) {
+  const accessKeyId = token.accessKeyId || token.credentials.accessKeyId
+  const accessKeySecret = token.accessKeySecret || token.credentials.accessKeySecret
+  const stsToken = token.securityToken || token.credentials.securityToken
+  const region = token.region
+  const bucket = token.bucket
+  return new Promise((resolve) => {
+    const client = new OSS({
+      accessKeyId,
+      accessKeySecret,
+      stsToken,
+      region,
+      bucket
     })
-  },
+    resolve(client)
+  })
+}
+
+function handleFileName(fileName, file) {
+  const extensionName = file.name.substr(file.name.indexOf('.')) // 文件扩展名
+  const newName = fileName === '' ? encodeURIComponent(file.name) : `${fileName}${extensionName}`
+  return newName
+}
+
+export default {
   /**
-   * 文件上传
-   * @param option 参考csdn: https://blog.csdn.net/qq_27626333/article/details/81463139
+   * 分片上传文件
+   * @param {Object} option
    */
   ossUploadFile(option) {
     const token = option.token
-    const fileName = option.fileName
+    const region = option.region || 'oss-cn-hangzhou'
+    const bucket = option.bucket
     const file = option.file
-    const self = this
-    return new Promise((resolve, reject) => {
-      const extensionName = file.name.substr(file.name.indexOf('.')) // 文件扩展名
-      const fileName = `${fileName}${extensionName}` // 文件名字（相对于根目录的路径 + 文件名）
-      // 执行上传
-      self.createOssClient(token).then((client) => {
-        // // 异步上传,返回数据
-        // 分片上传文件
-        client.multipartUpload(fileName, file, {
-          // 上传进度条(如果需要的话传入progress属性,注意：外部需要在el-upload元素里给on-progress属性传值,否则并无效果)
-          progress: (p) => { // p为0-1小数
-            let e = {}
-            e.percent = Math.floor(p * 100)
-            option.onProgress({}, e)
-            // option.onProgress(event, file, fileList) // el-upload的onProgress传入3个参数,event, file和fileList
-          }
+    const fileName = option.fileName + '' || ''
+    const newFileName = handleFileName(fileName, file)
 
-          // progress: (p) => {
-          //   let e = {}
-          //   e.percentage = Math.floor(p * 100)
-          //   console.log('Progress: ' + p) // 可以打印
-          //   option.onProgress(function(){}, e)
-          // }
-        }).then((val) => {
-          if (val.res.statusCode === 200) {
-            option.onSuccess(val)
-            return val
+    return new Promise((resolve, reject) => {
+      // 创建OSS实例
+      createOssClient({
+        region,
+        bucket,
+        ...token
+      }).then((client) => {
+        client.multipartUpload(newFileName, file, {
+          progress: (p) => { // p为0-1小数
+            let e
+            e = Math.floor(p * 100)
+            if (option.onProgress) {
+              option.onProgress(e)
+            }
+          }
+        }).then((res) => {
+          if (res.res.statusCode === 200) {
+            if (option.onSuccess) {
+              option.onSuccess(res)
+            }
+            resolve(res)
           } else {
-            option.onError('上传失败')
+            if (option.onError) {
+              option.onError('上传失败')
+            }
           }
         }, (err) => {
-          option.onError('上传失败')
+          if (option.onError) {
+            option.onError('上传失败')
+          }
           reject(err)
         })
       })
