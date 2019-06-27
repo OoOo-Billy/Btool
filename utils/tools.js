@@ -128,5 +128,26 @@ export default {
   hidePhone(phone){
     const tempPhone = phone + ''
     return tempPhone.replace(tempPhone.substring(3, 7), '****')
-  }
+  },
+
+
+  /**
+   * 提取富文本编辑的文章内容中的图片链接
+   */
+  pickImg(content) {
+    const pattern = /https?:\/\/([\w./?=]*)\.(jpg|png)/g
+    const arr = content ? content.match(pattern) : []
+    return arr || []
+  },
+
+  /**
+   * 格式化用户输入的http网址
+   */
+  formatUrl(url) {
+    if (url && !url.startsWith('http')) {
+      url = 'http://' + url
+    }
+    return url
+  },
 }
+
