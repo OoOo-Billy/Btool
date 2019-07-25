@@ -164,5 +164,26 @@ export default {
       return toString.call(obj) === '[object Array]'
     }
     return result
+  },
+
+  /*
+   * 洗牌算法
+   * random sort
+   * 从0~i（i的变化为 数组长度len到0递减）中随机取得一个下标，和最后一个元素（i）交换。
+   */
+  shuffle(arr) {
+    if (toString.call(arr) !== '[object Array]') return
+    let i = arr.length
+    let j, temp
+    let result = new Array(...arr)
+
+    while (i) {
+      j = Math.floor(Math.random() * i--)
+      temp = result[i]
+      result[i] = result[j]
+      result[j] = temp
+    }
+
+    return result
   }
 }
